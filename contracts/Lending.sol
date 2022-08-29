@@ -7,10 +7,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "./usdt.sol";
-
 interface IERC20 {
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
@@ -109,6 +105,9 @@ contract Lending is Ownable, Pausable, ReentrancyGuard {
         currency = IERC20(_usdtContract);
     }
 
+    ////
+    //main functions
+    ////
     function withdraw(uint256 _amount) public onlyOwner {
         require(
             currency.balanceOf(address(this)) >= _amount,
@@ -144,7 +143,9 @@ contract Lending is Ownable, Pausable, ReentrancyGuard {
         emit Repay(msg.sender, repayment);
     }
 
+    ////
     //getter functions
+    ////
     function debtAmount(address _borrower) public view returns (uint256) {
         uint256 repayment = debt[_borrower] + (debt[_borrower] / 10);
         return repayment;
@@ -159,7 +160,9 @@ contract Lending is Ownable, Pausable, ReentrancyGuard {
         return interestAmount;
     }
 
+    ////
     // Pausable
+    ////
     function pause() public onlyOwner {
         _pause();
     }
@@ -167,6 +170,4 @@ contract Lending is Ownable, Pausable, ReentrancyGuard {
     function unpause() public onlyOwner {
         _unpause();
     }
-
-    // function currencyBorrowing
 }
