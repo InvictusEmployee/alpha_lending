@@ -2,7 +2,6 @@ import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect, use } from "chai";
 import { solidity } from "ethereum-waffle";
-import { BigNumber } from "ethers";
 import {
   Lending,
   Lending__factory,
@@ -27,8 +26,7 @@ describe("Lending", function () {
   const thousand = ethers.utils.parseUnits("1000", "mwei");
 
   before(async function () {
-    // Contracts are deployed using the first signer/account by default
-
+    //get contract factory to be used and deployed.
     Lending = (await ethers.getContractFactory(
       "Lending",
       owner
@@ -40,17 +38,19 @@ describe("Lending", function () {
   });
 
   beforeEach(async function () {
+    //define owner and user accounts
     [owner, user] = await ethers.getSigners();
 
+    //deploy tether token with 1 million and 100 supply (6 decimal places)
     tether = await Tether.deploy("1000100000000", "Tether", "USDT", 6); //as TetherToken;
     await tether.deployed();
+    //deploy lending with a deployed tether token
     lending = await Lending.deploy(tether.address); //as Lending;
     await lending.deployed();
   });
 
   describe("Deployment", function () {
     it("Should deploy correctly", async function () {
-      // const { tether, lending } = await loadFixture(deployLending);
       expect(await tether.balanceOf(owner.address)).to.be.equal(
         million.add(hundred)
       );
@@ -60,8 +60,6 @@ describe("Lending", function () {
     });
 
     it("Should set the right owner", async function () {
-      // const { lock, owner } = await loadFixture(deployOneYearLockFixture);
-
       expect(await lending.owner()).to.equal(owner.address);
       expect(await tether.owner()).to.equal(owner.address);
     });
@@ -188,14 +186,88 @@ describe("Lending", function () {
       expect(balanceLending).to.be.equal(million);
 
       //withdraw 1000 usdt = 1000 * 10^6 wei
-      // await lending.connect(owner).pause();
       await lending.connect(owner).withdraw(thousand);
 
-      // //check balance post withdraw
+      //check balance post withdraw
       const balanceOwnerAfter = await tether.balanceOf(owner.address);
       const balanceLendingAfter = await tether.balanceOf(lending.address);
       expect(balanceOwnerAfter).to.be.equal(thousand.add(hundred));
       expect(balanceLendingAfter).to.be.equal(million.sub(thousand));
+    });
+  });
+
+  describe("getter functions", function () {
+    it("should return correct debtAmount ", async function () {
+      //transfer 1 million to a lending contract
+      await tether.connect(owner).transfer(lending.address, million);
+      //transfer 100 wei to user to be used as an interest repayment.
+      await tether.connect(owner).transfer(user.address, hundred);
+
+      //borrow 1st time
+      await lending.connect(user).borrow(thousand);
+
+      //check debtAmount = 1000 plus interest 100
+      const debtAmount = await lending.debtAmount(user.address);
+      expect(debtAmount).to.be.equal(thousand.add(hundred));
+
+      // //repay 1st time
+      await tether
+        .connect(user)
+        .approve(lending.address, thousand.add(hundred));
+      await lending.connect(user).repay();
+
+      //check debtAmount = 1000 plus interest 100
+      const debtAmountAfter = await lending.debtAmount(user.address);
+      expect(debtAmountAfter).to.be.equal(0);
+
+      // //borrow 1000 usdt
+      // await lending.connect(user).borrow(thousand);
+    });
+    it("should return correct borrowAmount ", async function () {
+      //transfer 1 million to a lending contract
+      await tether.connect(owner).transfer(lending.address, million);
+      //transfer 100 wei to user to be used as an interest repayment.
+      await tether.connect(owner).transfer(user.address, hundred);
+
+      //borrow 1st time
+      await lending.connect(user).borrow(thousand);
+
+      //check debtAmount = 1000 plus interest 100
+      const borrowAmount = await lending.borrowAmount(user.address);
+      expect(borrowAmount).to.be.equal(thousand);
+
+      // //repay 1st time
+      await tether
+        .connect(user)
+        .approve(lending.address, thousand.add(hundred));
+      await lending.connect(user).repay();
+
+      //check debtAmount = 1000 plus interest 100
+      const borrowAmountAfter = await lending.borrowAmount(user.address);
+      expect(borrowAmountAfter).to.be.equal(0);
+    });
+    it("should return correct interest ", async function () {
+      //transfer 1 million to a lending contract
+      await tether.connect(owner).transfer(lending.address, million);
+      //transfer 100 wei to user to be used as an interest repayment.
+      await tether.connect(owner).transfer(user.address, hundred);
+
+      //borrow 1st time
+      await lending.connect(user).borrow(thousand);
+
+      //check debtAmount = 1000 plus interest 100
+      const interestAmount = await lending.interest(user.address);
+      expect(interestAmount).to.be.equal(hundred);
+
+      // //repay 1st time
+      await tether
+        .connect(user)
+        .approve(lending.address, thousand.add(hundred));
+      await lending.connect(user).repay();
+
+      //check debtAmount = 1000 plus interest 100
+      const interestAfter = await lending.interest(user.address);
+      expect(interestAfter).to.be.equal(0);
     });
   });
 });
