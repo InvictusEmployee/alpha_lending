@@ -110,10 +110,6 @@ contract Lending is Ownable, Pausable, ReentrancyGuard {
     }
 
     function withdraw(uint256 _amount) public onlyOwner {
-        // require(
-        //     tx.origin == msg.sender,
-        //     "only EOA can withdraw, not a contract to prevent not applicable contract"
-        // );
         require(
             currency.balanceOf(address(this)) >= _amount,
             "not enough balance to withdraw"
